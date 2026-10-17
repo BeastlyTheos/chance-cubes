@@ -17,8 +17,8 @@
     "uuid": "^11.1.1"
   },
   "scripts": {
-    "start": "node start.js",
-    "debug": "nodemon start.js",
+    "start": "node index.js",
+    "debug": "nodemon index.js",
     "deploy-commands": "node deploy-commands.js",
     "deploy-commands-sharding": "node deploy-commands-sharding.js",
     "Docker Watch": "nodemon --exec \"docker compose up -d --build\"",
