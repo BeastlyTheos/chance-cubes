@@ -31,12 +31,12 @@ async function commands({ client, interaction, command, channelEmoji }) {
         case 's':
             await functions.destiny({ client, interaction, channelEmoji });
             break;
-        // Roll the dice command
+        // Roll the dice command (free-text dice code)
         case 'roll':
         case 'r':
-            await functions.roll({ interaction, client, channelEmoji });
+            await functions.oldRoll({ interaction, client, channelEmoji });
             break;
-        // Old free-text dice code (e.g. "yygggrrpp") - see modules/SW.GENESYS/roll.js's oldRoll()
+        // Alias of /roll for compatibility.
         case 'oldroll':
             await functions.oldRoll({ interaction, client, channelEmoji });
             break;

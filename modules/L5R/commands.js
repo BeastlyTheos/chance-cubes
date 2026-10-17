@@ -4,9 +4,9 @@ async function commands({ client, interaction, command, channelEmoji }) {
 	switch (command) {
 		case 'roll':
 		case 'r':
-			await functions.rollMenu({ interaction, client, channelEmoji });
+			await functions.oldRoll({ interaction, client, channelEmoji });
 			break;
-		// Old free-text dice code (e.g. "wwbb") - see modules/L5R/roll.js's oldRoll()
+		// Alias of /roll for compatibility.
 		case 'oldroll':
 			await functions.oldRoll({ interaction, client, channelEmoji });
 			break;

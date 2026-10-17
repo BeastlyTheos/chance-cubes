@@ -12,15 +12,15 @@ const withInput = (builder, description, required = false) =>
 
 const commands = [
     // System-agnostic
-    // /roll takes no options for any system now - it opens an interactive button-driven pool
-    // builder instead. See modules/SW.GENESYS/roll.js and modules/L5R/roll.js for the button/modal
-    // routers. (/add still takes free-text dice identifiers for L5R channels - see below.)
+    // /roll uses free-text dice code syntax (e.g. yygggrrpp or wwbb).
     new SlashCommandBuilder()
         .setName('roll')
-        .setDescription('Rolls dice for the system currently active in this channel.'),
-    // /oldroll is the pre-button-UI free-text dice code /roll used to use for every system, kept
-    // for players who'd rather type a code than click through the button pool builder - see each
-    // system's oldRoll() (modules/SW.GENESYS/roll.js, modules/L5R/roll.js).
+        .setDescription('Rolls dice using dice-code syntax, e.g. yygggrrpp or wwbb.')
+        .addStringOption(option =>
+            option.setName('input').setDescription('Dice code, e.g. yygggrrpp (SWRPG/Genesys) or wwbb (L5R)').setRequired(true))
+        .addStringOption(option =>
+            option.setName('text').setDescription('Assigns a label to the roll. (optional)')),
+    // /oldroll remains as an alias to the same free-text roll flow.
     new SlashCommandBuilder()
         .setName('oldroll')
         .setDescription('Rolls dice using the old dice-code syntax, e.g. yygggrrpp or wwbb.')

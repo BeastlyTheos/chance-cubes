@@ -66,7 +66,7 @@ const onInteraction = async ({ interaction, client }) => {
     //and can never change on later edits, so this has to be decided here before that goes out.
     // NOTE: this means these menus' buttons only work for the person who ran the command - nobody
     // else in the channel can see or click them, even for shared trackers like /destiny or /initiative.
-    const EPHEMERAL_COMMANDS = ['roll', 'reroll', 'character', 'destiny', 'story', 'initiative'];
+    const EPHEMERAL_COMMANDS = ['reroll', 'character', 'destiny', 'story', 'initiative'];
     await interaction.deferReply(EPHEMERAL_COMMANDS.includes(command) ? { flags: MessageFlags.Ephemeral } : undefined);
     const messageRef = modules.asMessageRef(interaction);
 
@@ -130,20 +130,87 @@ const onInteraction = async ({ interaction, client }) => {
     }
 };
 
-//The bot now only responds to slash commands, but people used to the old ! commands won't see that
-//until something tells them - this catches messages that still use the old prefix and points them at
-//re-inviting the bot with the applications.commands scope it needs for slash commands to appear at all.
+//Legacy prefix command parser: this bot still supports the old ! commands so it works well with
+//screen readers and environments where slash-command discovery is awkward.
+const makeLegacyInteraction = (message) => {
+    const prefix = config.prefix || '!';
+    const content = message.content.trim();
+    const body = content.startsWith(prefix) ? content.slice(prefix.length).trim() : '';
+    const tokens = body.split(/\s+/).filter(Boolean);
+    const command = (tokens[0] || '').toLowerCase();
+    const argText = tokens.slice(1).join(' ');
+    const input = command === 'roll' || command === 'oldroll' || command === 'poly' || command === 'crit' || command === 'shipcrit' || command === 'keep' || command === 'add' || command === 'help' || command === 'stats' || command === 'ver' || command === 'invite' || command === 'swrpg' || command === 'genesys' || command === 'l5r'
+        ? ((tokens.length > 1 && tokens[1] && /^[A-Za-z0-9+\-\s/.,:]*$/.test(tokens[1])) ? tokens.slice(1).join(' ') : argText)
+        : argText;
+    const text = command === 'roll' || command === 'oldroll'
+        ? (() => {
+            if (tokens.length <= 2) return null;
+            const firstToken = tokens[1] || '';
+            const diceLooksLikeDice = /^[A-Za-z0-9+\-\s]+$/.test(firstToken) && !firstToken.includes('/') && !firstToken.includes('.') && !firstToken.includes(':');
+            return diceLooksLikeDice ? tokens.slice(2).join(' ') : null;
+        })()
+        : null;
+
+    return {
+        guild: message.guild,
+        channel: message.channel,
+        user: message.author,
+        member: message.member,
+        options: {
+            getString: (name) => {
+                if (name === 'input') return input;
+                if (name === 'text') return text;
+                return null;
+            }
+        },
+        reply: (payload) => message.reply(payload),
+        editReply: (payload) => message.reply(payload),
+        followUp: (payload) => message.reply(payload),
+        deferReply: async () => undefined,
+        deleteReply: async () => undefined,
+        isChatInputCommand: () => false,
+        isButton: () => false,
+        isModalSubmit: () => false
+    };
+};
+
 const onLegacyMessage = async ({ message, client }) => {
     if (message.author.bot) return;
 
-    let prefix = await readData(client, message, 'prefix').catch(() => null);
-    if (!prefix) prefix = config.prefix;
-    if (!prefix || !message.content.startsWith(prefix)) return;
+    const prefix = config.prefix || '!';
+    if (!message.content.startsWith(prefix)) return;
 
-    await message.reply(
-        `${client.user.username} now uses Discord's slash commands instead of \`${prefix}\` commands - type \`/\` to see what's available. ` +
-        `If you don't see any slash commands for ${client.user.username}, ask a server admin to re-authorize the bot (this won't duplicate or remove it) here: ${modules.inviteUrl(client.user.id)}`
-    ).catch((error) => main.logError('onLegacyMessage', error));
+    const legacyInteraction = makeLegacyInteraction(message);
+    const messageRef = modules.asMessageRef(legacyInteraction);
+    const body = message.content.slice(prefix.length).trim();
+    const command = (body.split(/\s+/)[0] || '').toLowerCase();
+    const channelEmoji = await readData(client, messageRef, 'channelEmoji').catch(() => 'swrpg');
+
+    switch (command) {
+        case 'help':
+            if (channelEmoji === 'l5r') return l5rCommands({ client, interaction: legacyInteraction, command: 'help', channelEmoji });
+            return swCommands({ client, interaction: legacyInteraction, command: 'help', channelEmoji });
+        case 'roll':
+        case 'oldroll':
+            if (channelEmoji === 'l5r') return l5rCommands({ client, interaction: legacyInteraction, command: 'oldroll', channelEmoji });
+            return swCommands({ client, interaction: legacyInteraction, command: 'oldroll', channelEmoji });
+        case 'poly':
+            return modules.poly(legacyInteraction);
+        case 'swrpg':
+        case 'genesys':
+        case 'l5r':
+            writeData(client, messageRef, 'channelEmoji', command);
+            return message.reply(`${client.user.username} will now use ${command} dice`);
+        case 'ver':
+            return message.reply(`${client.user.username}: version: ${version}`);
+        case 'invite':
+            return message.reply(`Invite: ${modules.inviteUrl(client.user.id)}`);
+        case 'stats':
+            return modules.stats({ client, interaction: legacyInteraction });
+        default:
+            if (channelEmoji === 'l5r') return l5rCommands({ client, interaction: legacyInteraction, command, channelEmoji });
+            return swCommands({ client, interaction: legacyInteraction, command, channelEmoji });
+    }
 };
 
 exports.onInteraction = onInteraction;
