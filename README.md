@@ -3,6 +3,13 @@ CREDIT: Vampwood for conceiving the client, and SkyJedi for substantial contribu
 
 A Discord Bot Companion for the Star Wars : Edge of the Empire (SW:EotE), Age of Rebellion (AoR) and Force and Destiny (FnD) RPGs as well as Genesys, and Legend of the Five Rings (L5R) RPGs
 
+## Storage Modes
+
+- **With Firebase** (default/original behavior): persistent shared storage for character state, destiny pool, initiative order, rerolls, etc.
+- **Without Firebase**: the bot now starts with an in-memory fallback store. This is intended for simple local/single-process runs.
+  - Data is **not persisted** across restarts.
+  - Data is **not shared** across multiple processes/containers.
+
 ## Usage
 
 The bot is driven entirely by Discord slash commands. Most commands take a single free-text
