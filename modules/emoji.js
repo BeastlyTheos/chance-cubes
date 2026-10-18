@@ -11,6 +11,12 @@
 //names don't allow hyphens, so the uploaded application emoji drop them entirely (verified
 //against the live application emoji list) - "swrpg-yellow" was uploaded as "swrpgyellow".
 let cache = new Map();
+let emojiFile = null;
+try {
+    emojiFile = require('../emoji.json');
+} catch (error) {
+    console.warn(`Emoji file disabled: ${error.message}. Falling back to text symbols.`);
+}
 
 const TYPE_SLUGS = { swrpg: 'swrpg', genesys: 'genesys', l5r: 'l5r', buttonEmoji: 'buttonemoji' };
 
@@ -30,10 +36,12 @@ const loadEmojis = async (client) => {
     return cache.size;
 };
 
-//falls back to '' rather than undefined so a not-yet-loaded or genuinely missing icon (e.g. a
-//NeoEmoji name with no matching application emoji uploaded yet) never prints the literal text
-//"undefined" into a Discord message - every call site already treats a falsy result as "no icon"
-const emoji = (string, type = 'swrpg') => cache.get(neoEmojiName(type || 'swrpg', string)) || '';
+const emoji = (string, type = 'swrpg') => {
+    const key = neoEmojiName(type || 'swrpg', string);
+    if (cache.has(key)) return cache.get(key);
+    if (emojiFile && emojiFile[type] && emojiFile[type][string]) return emojiFile[type][string];
+    return string;
+};
 
 emoji.loadEmojis = loadEmojis;
 
