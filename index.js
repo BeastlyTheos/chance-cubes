@@ -10,7 +10,7 @@ const {
   EmbedBuilder,
   Colors,
 } = require("discord.js");
-const { token } = require("./config");
+const token = require("./env").required("DISCORD_TOKEN");
 const handlers = require("./handlers");
 const emoji = require("./modules/emoji");
 
@@ -62,7 +62,7 @@ const logError = (context, error) => {
   console.error(context, error);
 };
 
-//none of the interactionCreate/messageCreate/threadCreate listeners below are awaited by
+//none of the interactionCreate/threadCreate listeners below are awaited by
 //discord.js, and none of the handler chains they call into (onInteraction's command switch,
 //onComponent's per-module button routers, ...) wrap themselves in try/catch - so a single
 //rejected editReply/followUp/etc. anywhere in that chain (a stale interaction token, a Discord

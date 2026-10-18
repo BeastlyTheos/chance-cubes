@@ -1,5 +1,5 @@
 const dice = require("./").dice;
-const config = require("../config.json");
+const config = require("../config");
 const { getParams } = require('./functions');
 
 async function poly(interaction) {

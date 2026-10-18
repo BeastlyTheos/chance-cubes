@@ -1,12 +1,18 @@
 const { initializeApp, cert } = require('firebase-admin/app');
 const { getFirestore } = require('firebase-admin/firestore');
-const serviceAccount = require('./d1-firestore.json');
-const config = require('./config.json')
+const { required } = require('./env');
+const config = require('./config');
 
-initializeApp({
-    credential: cert(serviceAccount),
-    databaseURL: config.databaseURL
-});
+const appConfig = {
+    credential: cert({
+        projectId: required('FIREBASE_PROJECT_ID'),
+        clientEmail: required('FIREBASE_CLIENT_EMAIL'),
+        // .env keeps the key's newlines as the two characters \n
+        privateKey: required('FIREBASE_PRIVATE_KEY').replace(/\\n/g, '\n')
+    })
+};
+if (config.databaseURL) appConfig.databaseURL = config.databaseURL;
+initializeApp(appConfig);
 
 const db = getFirestore();
 

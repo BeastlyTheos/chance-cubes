@@ -30,12 +30,15 @@ const onComponent = async ({ interaction, client }) => {
     if (interaction.customId.startsWith('init:')) return swInitiativeComponent({ interaction, client });
     if (interaction.customId.startsWith('reroll:')) return swRerollComponent({ interaction, client });
     if (interaction.customId.startsWith('l5rreroll:')) return l5rRerollComponent({ interaction, client });
+    if (interaction.customId === modules.feedback.MODAL_ID) return modules.feedback.onFeedbackSubmit(interaction, 'D1-C3');
 };
 
 //Called whenever a user triggers one of the bot's slash commands
 const onInteraction = async ({ interaction, client }) => {
     if (interaction.isButton() || interaction.isModalSubmit()) return onComponent({ interaction, client });
     if (!interaction.isChatInputCommand()) return;
+    //a pop-up has to be the very first answer, so /feedback skips the permission checks and deferReply below
+    if (interaction.commandName === 'feedback') return interaction.showModal(modules.feedback.feedbackModal());
 
     //check to see if external emoji and embeds can be used (not applicable in DMs)
     if (interaction.guild && interaction.channel) {

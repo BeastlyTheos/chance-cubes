@@ -4,6 +4,7 @@ exports.asyncForEach = require('./functions').asyncForEach;
 exports.data = require('./data');
 exports.dice = require('./functions').dice;
 exports.emoji = require('./emoji');
+exports.feedback = require('./feedback');
 exports.getParams = require('./functions').getParams;
 exports.inviteUrl = require('./functions').inviteUrl;
 exports.modifierRoll = require('./functions').modifierRoll;

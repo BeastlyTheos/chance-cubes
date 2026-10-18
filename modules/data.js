@@ -1,10 +1,16 @@
 let db = null;
 let firebaseEnabled = false;
-try {
-  ({ db } = require("../firestore"));
-  firebaseEnabled = true;
-} catch (error) {}
-const { prefix } = require("../config.json");
+const hasFirebaseEnv =
+  !!process.env.FIREBASE_PROJECT_ID &&
+  !!process.env.FIREBASE_CLIENT_EMAIL &&
+  !!process.env.FIREBASE_PRIVATE_KEY;
+if (hasFirebaseEnv) {
+  try {
+    ({ db } = require("../firestore"));
+    firebaseEnabled = true;
+  } catch (error) {}
+}
+const { prefix } = require("../config");
 const memoryStore = new Map();
 
 const getDefaultData = (dataSet) => {

@@ -1,4 +1,4 @@
-const config = require('../../config.json');
+const config = require('../../config');
 const emoji = require('../').emoji;
 const {
 	ActionRowBuilder, ButtonBuilder, ButtonStyle,
