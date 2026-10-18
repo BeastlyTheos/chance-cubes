@@ -12,6 +12,7 @@
 //against the live application emoji list) - "swrpg-yellow" was uploaded as "swrpgyellow".
 let cache = new Map();
 let emojiFile = null;
+const { normalizeEmojiKey } = require("./emoji-key");
 try {
   emojiFile = require("../emoji.json");
 } catch (error) {}
@@ -23,12 +24,28 @@ const TYPE_SLUGS = {
   buttonEmoji: "buttonemoji",
 };
 
-const neoEmojiName = (type, key) => {
+const legacyNeoEmojiName = (type, key) => {
   const slug = TYPE_SLUGS[type] || TYPE_SLUGS.swrpg;
   const animated = /^(.+)gif$/.exec(key);
   return animated
     ? `a${slug}${animated[1].toLowerCase()}`
     : `${slug}${key.toLowerCase()}`;
+};
+
+const normalizedNeoEmojiName = (type, key) => {
+  const slug = TYPE_SLUGS[type] || TYPE_SLUGS.swrpg;
+  const normalized = normalizeEmojiKey(key);
+  if (typeof normalized !== "string" || !normalized.length) return null;
+  return `${slug}${normalized.toLowerCase()}`;
+};
+
+const neoEmojiNames = (type, key) => {
+  const keys = [];
+  const normalized = normalizedNeoEmojiName(type, key);
+  if (normalized) keys.push(normalized);
+  const legacy = legacyNeoEmojiName(type, key);
+  if (legacy && !keys.includes(legacy)) keys.push(legacy);
+  return keys;
 };
 
 //Fetches the bot's full application emoji list once and caches it in memory for this process -
@@ -47,11 +64,16 @@ const loadEmojis = async (client) => {
 };
 
 const emoji = (string, type = "swrpg") => {
-  const key = neoEmojiName(type || "swrpg", string);
-  if (cache.has(key)) return cache.get(key);
-  if (emojiFile && emojiFile[type] && emojiFile[type][string])
-    return emojiFile[type][string];
-  return string;
+  const emojiType = type || "swrpg";
+  const normalized = normalizeEmojiKey(string);
+  const key = neoEmojiNames(emojiType, string).find((name) => cache.has(name));
+  if (key) return cache.get(key);
+  if (emojiFile && emojiFile[emojiType]) {
+    if (emojiFile[emojiType][normalized])
+      return emojiFile[emojiType][normalized];
+    if (emojiFile[emojiType][string]) return emojiFile[emojiType][string];
+  }
+  return normalized;
 };
 
 emoji.loadEmojis = loadEmojis;
