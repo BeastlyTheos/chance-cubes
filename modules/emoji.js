@@ -13,17 +13,22 @@
 let cache = new Map();
 let emojiFile = null;
 try {
-    emojiFile = require('../emoji.json');
-} catch (error) {
-    console.warn(`Emoji file disabled: ${error.message}. Falling back to text symbols.`);
-}
+  emojiFile = require("../emoji.json");
+} catch (error) {}
 
-const TYPE_SLUGS = { swrpg: 'swrpg', genesys: 'genesys', l5r: 'l5r', buttonEmoji: 'buttonemoji' };
+const TYPE_SLUGS = {
+  swrpg: "swrpg",
+  genesys: "genesys",
+  l5r: "l5r",
+  buttonEmoji: "buttonemoji",
+};
 
 const neoEmojiName = (type, key) => {
-    const slug = TYPE_SLUGS[type] || TYPE_SLUGS.swrpg;
-    const animated = /^(.+)gif$/.exec(key);
-    return animated ? `a${slug}${animated[1].toLowerCase()}` : `${slug}${key.toLowerCase()}`;
+  const slug = TYPE_SLUGS[type] || TYPE_SLUGS.swrpg;
+  const animated = /^(.+)gif$/.exec(key);
+  return animated
+    ? `a${slug}${animated[1].toLowerCase()}`
+    : `${slug}${key.toLowerCase()}`;
 };
 
 //Fetches the bot's full application emoji list once and caches it in memory for this process -
@@ -31,16 +36,22 @@ const neoEmojiName = (type, key) => {
 //A stale cache after uploading new/renamed application emoji is refreshed with /restart (which
 //respawns every shard) rather than by re-fetching mid-run.
 const loadEmojis = async (client) => {
-    const emojis = await client.application.emojis.fetch();
-    cache = new Map(emojis.map((appEmoji) => [appEmoji.name, `<${appEmoji.animated ? 'a' : ''}:${appEmoji.name}:${appEmoji.id}>`]));
-    return cache.size;
+  const emojis = await client.application.emojis.fetch();
+  cache = new Map(
+    emojis.map((appEmoji) => [
+      appEmoji.name,
+      `<${appEmoji.animated ? "a" : ""}:${appEmoji.name}:${appEmoji.id}>`,
+    ]),
+  );
+  return cache.size;
 };
 
-const emoji = (string, type = 'swrpg') => {
-    const key = neoEmojiName(type || 'swrpg', string);
-    if (cache.has(key)) return cache.get(key);
-    if (emojiFile && emojiFile[type] && emojiFile[type][string]) return emojiFile[type][string];
-    return string;
+const emoji = (string, type = "swrpg") => {
+  const key = neoEmojiName(type || "swrpg", string);
+  if (cache.has(key)) return cache.get(key);
+  if (emojiFile && emojiFile[type] && emojiFile[type][string])
+    return emojiFile[type][string];
+  return string;
 };
 
 emoji.loadEmojis = loadEmojis;
