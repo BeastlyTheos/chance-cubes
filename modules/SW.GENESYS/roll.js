@@ -1,6 +1,7 @@
 const config = require('../../config.json');
 const { diceFaces, order, symbols } = require('./');
-const { dice, emoji, sleep, writeData, asMessageRef, getParams } = require('../');
+ const { dice, emoji, writeData, asMessageRef, getParams } = require('../');
+const { readData } = require('../data');
 const { flatten } = require('lodash');
 const {
     ActionRowBuilder, ButtonBuilder, ButtonStyle,
@@ -31,14 +32,82 @@ const mapDie = (die) => {
     }
 };
 
-//splits raw params into per-die tokens, e.g. ['3pro'] -> ['pro','pro','pro'], or ['ggb'] -> ['g','g','b']
+//splits raw params into per-die tokens. Supports both the legacy syntax (e.g. ['g','g','b']) and
+//the compact syntax (e.g. ['3pro'], ['ggb'], ['3g2y4p'], ['py']). We parse by the longest
+//valid alias at each step so multi-letter entries like 'pro' stay intact while simple letter runs
+//like 'py' expand to ['p','y'].
+const DIE_ALIASES = [
+    'yellow','y','proficiency','pro',
+    'green','g','ability','a',
+    'blue','b','boost','boo',
+    'red','r','challenge','c',
+    'purple','p','difficulty','d',
+    'black','blk','k','s','sb','setback',
+    'white','w','force','f',
+    'success','suc','*',
+    'advantage','adv','v',
+    'triumph','tri','!',
+    'failure','fail','-',
+    'threat','thr','t',
+    'despair','des','$',
+    'lightside','lightpip','light','l',
+    'darkside','darkpip','dark','n'
+].sort((a, b) => b.length - a.length);
+
+const expandDiceToken = (token) => {
+    const text = String(token || '').trim().toLowerCase();
+    if (!text) return [];
+
+    const expanded = [];
+    let index = 0;
+
+    while (index < text.length) {
+        const remaining = text.slice(index);
+
+        const leadingNumber = remaining.match(/^\d+/);
+        if (leadingNumber) {
+            const qty = Number(leadingNumber[0]);
+            let labelIndex = leadingNumber[0].length;
+            let match = null;
+
+            for (const alias of DIE_ALIASES) {
+                if (remaining.slice(labelIndex).startsWith(alias)) {
+                    match = alias;
+                    break;
+                }
+            }
+
+            if (!match) {
+                break;
+            }
+
+            expanded.push(...Array.from({ length: qty }, () => match));
+            index += leadingNumber[0].length + match.length;
+            continue;
+        }
+
+        let match = null;
+        for (const alias of DIE_ALIASES) {
+            if (remaining.startsWith(alias)) {
+                match = alias;
+                break;
+            }
+        }
+
+        if (!match) {
+            index += 1;
+            continue;
+        }
+
+        expanded.push(match);
+        index += match.length;
+    }
+
+    return expanded.map(mapDie).filter(Boolean);
+};
+
 const tokenizeParams = (params) => {
-    if (params[0].match(/\d+/g)) {
-        return flatten(params.map(param => {
-            const diceQty = +(param).replace(/\D/g, ''), color = param.replace(/\d/g, '');
-            return [...Array(diceQty)].map(() => color);
-        }));
-    } else return params.join('').split('').map(type => type);
+    return flatten(params.map(expandDiceToken));
 };
 
 //processes the params and gives an array of the type of dice to roll (still interaction-based - used by reroll.js)
@@ -158,16 +227,68 @@ const buildResultText = ({ roll, results }, channelEmoji) => {
     if (results.lightpip > 0) finalCount.lightpip = results.lightpip;
     if (results.darkpip > 0) finalCount.darkpip = results.darkpip;
 
-    const colors = Object.entries(roll)
-                         .sort(([a], [b]) => order.indexOf(a) - order.indexOf(b))
-                         .filter(([, numbers]) => numbers.length > 0),
-        facesList = flatten(colors.map(([color, numbers]) => numbers.map(number => `${color}${symbols.includes(color) ? '' : diceFaces[color][number].face}`))),
+    const faceRank = (face) => {
+            return [...face].reduce((score, symbol) => {
+                if (symbol === 's' || symbol === 'f' || symbol === 'r' || symbol === 'd') score.successFailure += 1;
+                if (symbol === 'a' || symbol === 't') score.advantageThreat += 1;
+                if (symbol === 'r' || symbol === 'd') score.triumphDespair += 1;
+                return score;
+            }, { successFailure: 0, advantageThreat: 0, triumphDespair: 0 });
+        },
+        colors = Object.entries(roll)
+                       .sort(([a], [b]) => order.indexOf(a) - order.indexOf(b))
+                       .filter(([, numbers]) => numbers.length > 0),
+        facesList = flatten(colors.map(([color, numbers]) =>
+            numbers.map((number, index) => {
+                const face = diceFaces[color][number].face;
+                const key = `${color}${symbols.includes(color) ? '' : face}`;
+                return { key, color, face, colorOrder: order.indexOf(color), originalIndex: index, ...faceRank(face) };
+            })
+        ))
+            .sort((a, b) => {
+                if (b.successFailure !== a.successFailure) return b.successFailure - a.successFailure;
+                if (b.advantageThreat !== a.advantageThreat) return b.advantageThreat - a.advantageThreat;
+                if (b.triumphDespair !== a.triumphDespair) return b.triumphDespair - a.triumphDespair;
+                if (a.colorOrder !== b.colorOrder) return a.colorOrder - b.colorOrder;
+                return a.originalIndex - b.originalIndex;
+            })
+            .map(entry => entry.key),
         faces = facesList.map(str => emoji(str, channelEmoji)).join(''),
         response = Object.keys(finalCount)
                          .map(symbol => `${finalCount[symbol]}${emoji(symbol, channelEmoji)}`)
                          .join(' • ');
 
     return { faces, response };
+};
+
+const DICE_CODE_TOKENS = {
+    yellow: 'y',
+    green: 'g',
+    blue: 'b',
+    red: 'r',
+    purple: 'p',
+    black: 'k',
+    white: 'w',
+    success: '*',
+    advantage: 'v',
+    triumph: '!',
+    failure: '-',
+    threat: 't',
+    despair: '$',
+    lightpip: 'l',
+    darkpip: 'n'
+};
+
+const buildDiceCodeFromRoll = (roll = {}) => {
+    return order
+        .filter(type => (roll[type] || []).length > 0)
+        .map(type => {
+            const count = roll[type].length;
+            const token = DICE_CODE_TOKENS[type];
+            if (!token) return '';
+            return count > 1 ? `${count}${token}` : token;
+        })
+        .join('');
 };
 
 //interaction-based display - no longer called anywhere now that reroll.js has its own button
@@ -376,11 +497,15 @@ const buildSymbolsScreen = (state, iconsOk = true, channelEmoji) => {
     };
 };
 
-//builds the embed shown for a rolled result - faces go in the description, with the
-//success/advantage/etc. tally broken out as a field once it's available
-const buildRollResultEmbed = (rollLine, faces, resultsLine) => {
-    const embed = new EmbedBuilder().setColor(Colors.DarkNavy).setTitle(rollLine).setDescription(faces);
-    if (resultsLine) embed.addFields({ name: 'Results', value: resultsLine });
+//builds the embed shown for a rolled result - put the net result summary first so it reads
+//like "2 success • 1 advantage from [individual die faces]" instead of ending with the tally
+const buildRollResultEmbed = (rollLine, faces, resultsLine, diceCode) => {
+    const embed = new EmbedBuilder().setColor(Colors.DarkNavy).setTitle(rollLine);
+    const fromText = diceCode ? ` from ${diceCode}:` : ' from:';
+    const description = resultsLine
+        ? `${resultsLine}${faces ? `${fromText} ${faces}` : ''}`
+        : (faces || 'No dice rolled.');
+    embed.setDescription(description);
     return embed;
 };
 
@@ -472,12 +597,9 @@ const oldRoll = async ({ interaction, client, channelEmoji }) => {
     writeData(client, messageRef, 'diceResult', result.diceResult.roll);
     const rollLine = `${displayName(interaction)} rolls${desc ? `: ${desc}` : ''}`;
 
-    //show the animated gif faces first, then swap to the static faces once they've had a
-    //moment to play - matches /roll's button-driven two-stage reveal
-    await interaction.editReply({ embeds: [buildRollResultEmbed(rollLine, result.textGif || result.faces)] });
-    await sleep(1200);
     const resultsLine = result.response.length > 0 ? result.response : 'All dice have cancelled out';
-    await interaction.editReply({ embeds: [buildRollResultEmbed(rollLine, result.faces, resultsLine)] });
+    const diceCode = buildDiceCodeFromRoll(result.diceResult.roll);
+    await interaction.editReply({ embeds: [buildRollResultEmbed(rollLine, result.faces, resultsLine, diceCode)] });
 };
 
 //---------------------------------------------------------------- roll builder router
@@ -555,16 +677,9 @@ const onComponent = async ({ interaction, client }) => {
             //update() (not deferUpdate()+editReply()) since this first response needs no async prep.
             await interaction.update({ content: '', embeds: [textEmbed('Rolled!')], components: [] });
 
-            //show the animated gif faces first, then swap to the static faces once they've had a
-            //moment to play - matches the old text-based /roll's two-stage editReply.
-            //the second edit goes through interaction.webhook (not publicMessage.edit()) because a
-            //followUp is only guaranteed postable/editable via the interaction's own webhook token -
-            //the bot's normal REST client can 403 with "Missing Access" editing it directly if the
-            //bot has no standing permissions in the channel beyond what the interaction itself grants
-            const publicMessage = await interaction.followUp({ embeds: [buildRollResultEmbed(rollLine, result.textGif || result.faces)] });
-            await sleep(1200);
             const resultsLine = result.response.length > 0 ? result.response : 'All dice have cancelled out';
-            await interaction.webhook.editMessage(publicMessage.id, { embeds: [buildRollResultEmbed(rollLine, result.faces, resultsLine)] });
+            const diceCode = buildDiceCodeFromRoll(result.diceResult.roll);
+            await interaction.followUp({ embeds: [buildRollResultEmbed(rollLine, result.faces, resultsLine, diceCode)] });
             await interaction.deleteReply().catch((error) => main.logError('roll onComponent', error));
             break;
         }

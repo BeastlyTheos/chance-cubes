@@ -50,19 +50,24 @@ function initDiceResult() {
 	};
 }
 
-//processes the params and give an array of the type of dice to roll - pure, no Discord I/O
+//processes the params and give an array of the type of dice to roll - pure, no Discord I/O.
+//Supports shorthand such as "3w2b" -> ["w","w","w","b","b"] and "3skill2ring".
+const expandDiceToken = (token) => {
+	const matches = [...token.toLowerCase().matchAll(/(\d+)?([a-z]+)/g)];
+	if (!matches.length) return [];
+
+	return matches.flatMap((match) => {
+		const qty = match[1] ? Number(match[1]) : 1;
+		const value = match[2];
+		return Array.from({ length: qty }, () => value);
+	});
+};
+
 function processType(params) {
 	let diceOrder = [], finalOrder = [];
-	if (params[0].match(/\d+/g)) {
-		for (let i = 0; i < params.length; i++) {
-			let diceQty = params[i].replace(/\D/g, "");
-			let color = params[i].replace(/\d/g, "");
-			for (let j = 0; j < diceQty; j++) diceOrder.push(color);
-		}
-	} else {
-		params = params.join('');
-		for (let i = 0; i < params.length; i++) diceOrder.push(params[i]);
-	}
+	params.forEach(token => {
+		diceOrder.push(...expandDiceToken(token));
+	});
 
 	diceOrder.forEach(die => {
 		switch (die) {
