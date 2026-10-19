@@ -166,15 +166,24 @@ const makeLegacyInteraction = (message) => {
                 return null;
             }
         },
-        reply: (payload) => message.reply(payload),
-        editReply: (payload) => message.reply(payload),
-        followUp: (payload) => message.reply(payload),
+        reply: (payload) => message.channel.send(payload),
+        editReply: (payload) => message.channel.send(payload),
+        followUp: (payload) => message.channel.send(payload),
         deferReply: async () => undefined,
         deleteReply: async () => undefined,
         isChatInputCommand: () => false,
         isButton: () => false,
         isModalSubmit: () => false
     };
+};
+
+const deleteLegacyRollTrigger = async ({ message, client }) => {
+    if (!message || !message.guild || !message.deletable) return;
+    const permissions = message.channel && message.channel.permissionsFor
+        ? message.channel.permissionsFor(client.user)
+        : null;
+    if (permissions && !permissions.has(PermissionFlagsBits.ManageMessages)) return;
+    await message.delete().catch(() => undefined);
 };
 
 const onLegacyMessage = async ({ message, client }) => {
@@ -193,7 +202,14 @@ const onLegacyMessage = async ({ message, client }) => {
         case 'help':
             if (channelEmoji === 'l5r') return l5rCommands({ client, interaction: legacyInteraction, command: 'help', channelEmoji });
             return swCommands({ client, interaction: legacyInteraction, command: 'help', channelEmoji });
-        case 'roll':
+        case 'roll': {
+            const result = channelEmoji === 'l5r'
+                ? l5rCommands({ client, interaction: legacyInteraction, command: 'oldroll', channelEmoji })
+                : swCommands({ client, interaction: legacyInteraction, command: 'oldroll', channelEmoji });
+            await result;
+            await deleteLegacyRollTrigger({ message, client });
+            return result;
+        }
         case 'oldroll':
             if (channelEmoji === 'l5r') return l5rCommands({ client, interaction: legacyInteraction, command: 'oldroll', channelEmoji });
             return swCommands({ client, interaction: legacyInteraction, command: 'oldroll', channelEmoji });
