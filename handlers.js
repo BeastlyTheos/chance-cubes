@@ -186,6 +186,20 @@ const deleteLegacyRollTrigger = async ({ message, client }) => {
     await message.delete().catch(() => undefined);
 };
 
+const LEGACY_COMMANDS = [
+    'help', 'roll', 'oldroll', 'poly', 'crit', 'shipcrit', 'keep', 'add', 'stats', 'ver', 'invite', 'swrpg', 'genesys', 'l5r'
+];
+
+const resolveLegacyCommand = (rawCommand) => {
+    const normalized = (rawCommand || '').toLowerCase();
+    if (!normalized) return '';
+
+    const matches = LEGACY_COMMANDS.filter(command => command.startsWith(normalized));
+    if (!matches.length) return '';
+
+    return matches.sort((a, b) => b.length - a.length)[0];
+};
+
 const onLegacyMessage = async ({ message, client }) => {
     if (message.author.bot) return;
 
@@ -195,8 +209,13 @@ const onLegacyMessage = async ({ message, client }) => {
     const legacyInteraction = makeLegacyInteraction(message);
     const messageRef = modules.asMessageRef(legacyInteraction);
     const body = message.content.slice(prefix.length).trim();
-    const command = (body.split(/\s+/)[0] || '').toLowerCase();
+    const rawCommand = (body.split(/\s+/)[0] || '').toLowerCase();
+    const command = resolveLegacyCommand(rawCommand);
     const channelEmoji = await readData(client, messageRef, 'channelEmoji').catch(() => 'swrpg');
+
+    if (!command) {
+        return;
+    }
 
     switch (command) {
         case 'help':
@@ -219,11 +238,11 @@ const onLegacyMessage = async ({ message, client }) => {
         case 'genesys':
         case 'l5r':
             writeData(client, messageRef, 'channelEmoji', command);
-            return message.reply(`${client.user.username} will now use ${command} dice`);
+            return message.channel.send(`${client.user.username} will now use ${command} dice`);
         case 'ver':
-            return message.reply(`${client.user.username}: version: ${version}`);
+            return message.channel.send(`${client.user.username}: version: ${version}`);
         case 'invite':
-            return message.reply(`Invite: ${modules.inviteUrl(client.user.id)}`);
+            return message.channel.send(`Invite: ${modules.inviteUrl(client.user.id)}`);
         case 'stats':
             return modules.stats({ client, interaction: legacyInteraction });
         default:
