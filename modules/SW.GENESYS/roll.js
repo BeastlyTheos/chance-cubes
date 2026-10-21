@@ -1,4 +1,4 @@
-const config = require('../../config');
+const env = require('../../env');
 const { diceFaces, order, symbols } = require('./');
  const { dice, emoji, writeData, asMessageRef, getParams } = require('../');
 const { readData } = require('../data');
@@ -119,8 +119,8 @@ const processType = (interaction, params) => {
         main.respond(interaction, 'No dice rolled.');
         return [];
     }
-    if (params.some(param => +(param).replace(/\D/g, '') > +config.maxRollsPerDie)) {
-        main.respond(interaction, 'Roll exceeds max roll per die limit of ' + config.maxRollsPerDie + ' . Please try again.');
+    if (params.some(param => +(param).replace(/\D/g, '') > +env.maxRollsPerDie)) {
+        main.respond(interaction, 'Roll exceeds max roll per die limit of ' + env.maxRollsPerDie + ' . Please try again.');
         return [];
     }
     return tokenizeParams(params).map(mapDie).filter(Boolean).sort();
@@ -318,8 +318,8 @@ const rollCore = ({ params = [], channelEmoji, diceResult, diceOrder }) => {
 
     if (!diceOrder) {
         if (!params[0]) return { error: 'No dice rolled.' };
-        if (params.some(param => +(param).replace(/\D/g, '') > +config.maxRollsPerDie)) {
-            return { error: `Roll exceeds max roll per die limit of ${config.maxRollsPerDie}. Please try again.` };
+        if (params.some(param => +(param).replace(/\D/g, '') > +env.maxRollsPerDie)) {
+            return { error: `Roll exceeds max roll per die limit of ${env.maxRollsPerDie}. Please try again.` };
         }
         diceOrder = tokenizeParams(params).map(mapDie).filter(Boolean).sort();
     }

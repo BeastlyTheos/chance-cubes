@@ -1,5 +1,5 @@
 const fs = require('fs');
-const config = require('../config');
+const env = require('../env');
 const { normalizeEmojiKey } = require('./emoji-key');
 
 const l5rDice = [
@@ -119,7 +119,7 @@ const find = (c, { list, guildID }) => {
 };
 
 const findEmoji = async ({ list, client, channelEmoji }) => {
-    const array = await client.shard.broadcastEval(find, { context: { list, guildID: config[channelEmoji] } });
+    const array = await client.shard.broadcastEval(find, { context: { list, guildID: env[channelEmoji] } });
     return array.find(x => x);
 };
 

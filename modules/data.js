@@ -10,7 +10,7 @@ if (hasFirebaseEnv) {
     firebaseEnabled = true;
   } catch (error) {}
 }
-const { prefix } = require("../config");
+const { prefix } = require("../env");
 const memoryStore = new Map();
 
 const getDefaultData = (dataSet) => {

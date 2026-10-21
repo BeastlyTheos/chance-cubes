@@ -1,7 +1,7 @@
 const Discord = require('discord.js');
 const { PermissionFlagsBits, Colors, MessageFlags } = Discord;
 const { version } = require('./package.json');
-const config = require('./config');
+const env = require('./env');
 const { readData, writeData } = require('./modules/data');
 const modules = require('./modules/');
 const main = require('./index');
@@ -108,7 +108,7 @@ const onInteraction = async ({ interaction, client }) => {
     }
     let recognized = SYSTEM_AGNOSTIC_COMMANDS.includes(command);
 
-    if (interaction.user.id === config.adminID) {
+    if (interaction.user.id === env.adminID) {
         if (ADMIN_COMMANDS.includes(command)) recognized = true;
         await modules.admin({ client, interaction, command });
     }
@@ -136,7 +136,7 @@ const onInteraction = async ({ interaction, client }) => {
 //Legacy prefix command parser: this bot still supports the old ! commands so it works well with
 //screen readers and environments where slash-command discovery is awkward.
 const makeLegacyInteraction = (message) => {
-    const prefix = config.prefix || '!';
+    const prefix = env.prefix || '!';
     const content = message.content.trim();
     const body = content.startsWith(prefix) ? content.slice(prefix.length).trim() : '';
     const tokens = body.split(/\s+/).filter(Boolean);
@@ -203,7 +203,7 @@ const resolveLegacyCommand = (rawCommand) => {
 const onLegacyMessage = async ({ message, client }) => {
     if (message.author.bot) return;
 
-    const prefix = config.prefix || '!';
+    const prefix = env.prefix || '!';
     if (!message.content.startsWith(prefix)) return;
 
     const legacyInteraction = makeLegacyInteraction(message);

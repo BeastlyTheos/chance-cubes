@@ -1,5 +1,5 @@
 const dice = require("./").dice;
-const config = require("../config");
+const env = require("../env");
 const { getParams } = require('./functions');
 
 async function poly(interaction) {
@@ -46,8 +46,8 @@ async function poly(interaction) {
 		let total = 0;
 		let rolls = [];
 
-		if (dieAmount > config.maxRollsPerDie) {
-			main.respond(interaction, `Roll exceeds max roll per die limit of ${config.maxRollsPerDie}. Please try again.`);
+		if (dieAmount > env.maxRollsPerDie) {
+			main.respond(interaction, `Roll exceeds max roll per die limit of ${env.maxRollsPerDie}. Please try again.`);
 			return;
 		}
 

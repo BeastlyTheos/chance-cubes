@@ -1,7 +1,6 @@
 const { initializeApp, cert } = require('firebase-admin/app');
 const { getFirestore } = require('firebase-admin/firestore');
-const { required } = require('./env');
-const config = require('./config');
+const { required, databaseURL } = require('./env');
 
 const appConfig = {
     credential: cert({
@@ -11,7 +10,7 @@ const appConfig = {
         privateKey: required('FIREBASE_PRIVATE_KEY').replace(/\\n/g, '\n')
     })
 };
-if (config.databaseURL) appConfig.databaseURL = config.databaseURL;
+if (databaseURL) appConfig.databaseURL = databaseURL;
 initializeApp(appConfig);
 
 const db = getFirestore();

@@ -1,4 +1,4 @@
-const config = require('../../config');
+const env = require('../../env');
 const emoji = require('../').emoji;
 const {
 	ActionRowBuilder, ButtonBuilder, ButtonStyle,
@@ -222,8 +222,8 @@ async function rollCore({ params = [], diceResult, channelEmoji, diceOrder }) {
 
 	if (!diceOrder) {
 		if (!params[0] || !params.length) return { error: 'No dice rolled.' };
-		if (params.some(param => +(param).replace(/\D/g, '') > +config.maxRollsPerDie)) {
-			return { error: `Roll exceeds max roll per die limit of ${config.maxRollsPerDie}. Please try again.` };
+		if (params.some(param => +(param).replace(/\D/g, '') > +env.maxRollsPerDie)) {
+			return { error: `Roll exceeds max roll per die limit of ${env.maxRollsPerDie}. Please try again.` };
 		}
 		diceOrder = processType(params);
 	}
