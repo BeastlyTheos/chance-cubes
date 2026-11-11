@@ -1,0 +1,14 @@
+[Unit]
+Description=server for Chance Cubes discord bot
+After=network.target
+
+[Service]
+Type=simple
+User=theodorepcooke
+WorkingDirectory=/home/theodorepcooke/chance-cubes
+ExecStart=/home/theodorepcooke/.nvm/versions/node/v22.23.3/bin/npmstart
+Restart=on-failure
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target
