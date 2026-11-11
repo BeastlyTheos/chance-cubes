@@ -29,6 +29,10 @@ const ClientOptions = {
   ],
 };
 const client = new Client(ClientOptions);
+const logShutdown = (cause, details = '') => {
+  const message = details ? `Shutdown cause: ${cause}. ${details}` : `Shutdown cause: ${cause}.`;
+  console.info(message);
+};
 
 //A handful of error codes are expected, non-actionable noise rather than real bugs, so they log
 //as a short one-liner instead of dumping a full stack trace every time:
@@ -70,12 +74,34 @@ const logError = (context, error) => {
 //those by default, which looks like the shard randomly dying and needing a full respawn+reconnect
 //instead of just failing that one interaction - these .catch()s and the process-level handlers
 //below keep a single bad interaction from taking the shard down.
-process.on("unhandledRejection", (error) =>
-  logError("Unhandled promise rejection", error),
-);
-process.on("uncaughtException", (error) =>
-  logError("Uncaught exception", error),
-);
+process.on("SIGINT", () => {
+  logShutdown("normal shutdown", "received SIGINT");
+  process.exit(0);
+});
+process.on("SIGTERM", () => {
+  logShutdown("normal shutdown", "received SIGTERM");
+  process.exit(0);
+});
+process.on("beforeExit", () => {
+  logShutdown("normal shutdown", "event loop drained; process is exiting cleanly");
+});
+process.on("exit", (code) => {
+  if (code === 0) {
+    logShutdown("normal shutdown", `process exited with code ${code}`);
+  } else {
+    logShutdown("shutdown caused by crash or exception", `process exited with code ${code}`);
+  }
+});
+process.on("unhandledRejection", (error) => {
+  logShutdown("shutdown caused by crash or exception", `unhandledRejection: ${error instanceof Error ? error.message : String(error)}`);
+  logError("Unhandled promise rejection", error);
+  process.exitCode = 1;
+});
+process.on("uncaughtException", (error) => {
+  logShutdown("shutdown caused by crash or exception", `uncaughtException: ${error instanceof Error ? error.message : String(error)}`);
+  logError("Uncaught exception", error);
+  process.exitCode = 1;
+});
 
 client.login(token).catch((error) => console.error(error));
 
